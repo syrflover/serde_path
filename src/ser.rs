@@ -214,17 +214,15 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        // Ok(self)
-        unimplemented!()
+        Ok(self)
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
     // represent tuples more efficiently by omitting the length, since tuple
     // means that the corresponding `Deserialize implementation will know the
     // length without needing to look at the serialized data.
-    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        // self.serialize_seq(Some(len))
-        unimplemented!()
+    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+        self.serialize_seq(Some(len))
     }
 
     // Tuple structs look just like sequences in JSON.
@@ -300,22 +298,25 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     type Error = Error;
 
     // Serialize a single element of the sequence.
-    fn serialize_element<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        /* if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self) */
-        unimplemented!()
+        let v = value.serialize(&mut **self)?;
+
+        self.output += &v;
+        self.output += "-";
+
+        Ok(())
     }
 
     // Close the sequence.
     fn end(self) -> Result<String> {
-        /* self.output += "]";
-        Ok(()) */
-        unimplemented!()
+        if self.output.ends_with('-') {
+            self.output.pop();
+        }
+
+        Ok(String::new())
     }
 }
 
@@ -324,21 +325,24 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
     type Ok = String;
     type Error = Error;
 
-    fn serialize_element<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        /* if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self) */
-        unimplemented!()
+        let v = value.serialize(&mut **self)?;
+
+        self.output += &v;
+        self.output += "-";
+
+        Ok(())
     }
 
     fn end(self) -> Result<String> {
-        /* self.output += "]";
-        Ok(()) */
-        unimplemented!()
+        if self.output.ends_with('-') {
+            self.output.pop();
+        }
+
+        Ok(String::new())
     }
 }
 
@@ -520,6 +524,34 @@ mod tests {
         };
         let expected = "/1/hello/hi";
         assert_eq!(to_string("/:int/hello/:str", &test).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_tuple() {
+        #[derive(Serialize)]
+        struct Test {
+            tuple: (usize, String),
+        }
+
+        let test = Test {
+            tuple: (35523, "test".to_string()),
+        };
+        let expected = "/35523-test";
+        assert_eq!(to_string("/:tuple", &test).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_seq() {
+        #[derive(Serialize)]
+        struct Test {
+            seq: Vec<usize>,
+        }
+
+        let test = Test {
+            seq: vec![1, 2, 6, 3, 7, 2, 5, 11],
+        };
+        let expected = "/1-2-6-3-7-2-5-11";
+        assert_eq!(to_string("/:seq", &test).unwrap(), expected);
     }
 
     #[test]
