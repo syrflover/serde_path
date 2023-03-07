@@ -170,10 +170,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
     ) -> Result<String> {
-        // self.serialize_str(variant)
-        unimplemented!()
+        self.serialize_str(variant)
     }
 
     // As is done here, serializers are encouraged to treat newtype structs as
@@ -538,6 +537,23 @@ mod tests {
         };
         let expected = "/35523-test";
         assert_eq!(to_string("/:tuple", &test).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_unit_variant() {
+        #[derive(Serialize)]
+        enum E {
+            A,
+        }
+
+        #[derive(Serialize)]
+        struct Test {
+            unit_variant: E,
+        }
+
+        let test = Test { unit_variant: E::A };
+        let expected = "/A";
+        assert_eq!(to_string("/:unit_variant", &test).unwrap(), expected);
     }
 
     #[test]
