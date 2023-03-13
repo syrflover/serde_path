@@ -113,7 +113,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<String> {
         // self.output += v;
-        Ok(v.to_string())
+        Ok(v.replace(' ', "-"))
     }
 
     // Serialize a byte array as an array of bytes. Could also use a base64
@@ -510,19 +510,29 @@ mod tests {
     use crate::to_string;
 
     #[test]
-    fn test_struct() {
+    fn test_str() {
         #[derive(Serialize)]
         struct Test {
-            int: u32,
             str: String,
         }
 
         let test = Test {
-            int: 1,
-            str: "hi".to_string(),
+            str: "test whitespace".to_string(),
         };
-        let expected = "/1/hello/hi";
-        assert_eq!(to_string("/:int/hello/:str", &test).unwrap(), expected);
+        let expected = "/test-whitespace/hello";
+        assert_eq!(to_string("/:str/hello", &test).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_int() {
+        #[derive(Serialize)]
+        struct Test {
+            int: u32,
+        }
+
+        let test = Test { int: 1 };
+        let expected = "/1/hello";
+        assert_eq!(to_string("/:int/hello", &test).unwrap(), expected);
     }
 
     #[test]
@@ -533,9 +543,9 @@ mod tests {
         }
 
         let test = Test {
-            tuple: (35523, "test".to_string()),
+            tuple: (35523, "test whitespace".to_string()),
         };
-        let expected = "/35523-test";
+        let expected = "/35523-test-whitespace";
         assert_eq!(to_string("/:tuple", &test).unwrap(), expected);
     }
 
