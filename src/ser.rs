@@ -1,6 +1,6 @@
 use serde::{ser, Serialize};
 
-use crate::error::*;
+use crate::{error::Error, Result};
 
 struct Serializer {
     output: String,
