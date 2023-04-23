@@ -3,6 +3,8 @@ use serde::{ser, Serialize};
 use crate::{error::Error, Result};
 
 struct Serializer {
+    map_key: Option<String>,
+
     output: String,
 }
 
@@ -13,6 +15,7 @@ where
     // /users/:user_id Uuid
 
     let mut serializer = Serializer {
+        map_key: None,
         output: path.into(),
     };
 
@@ -254,7 +257,8 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
         /* self.output += "{";
         Ok(self) */
-        unimplemented!()
+        // unimplemented!()
+        Ok(self)
     }
 
     // Structs look just like maps in JSON. In particular, JSON requires that we
@@ -420,29 +424,44 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
     // This can be done by using a different Serializer to serialize the key
     // (instead of `&mut **self`) and having that other serializer only
     // implement `serialize_str` and return an error on any other data type.
-    fn serialize_key<T>(&mut self, _key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
         // key.serialize(&mut **self)
-        unimplemented!()
+        // unimplemented!()
+
+        let key = key.serialize(&mut **self)?;
+
+        self.map_key.replace(key);
+
+        Ok(())
     }
 
     // It doesn't make a difference whether the colon is printed at the end of
     // `serialize_key` or at the beginning of `serialize_value`. In this case
     // the code is a bit simpler having it here.
-    fn serialize_value<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
         // value.serialize(&mut **self)
-        unimplemented!()
+        // unimplemented!()
+
+        if let Some(key) = self.map_key.take() {
+            let val = value.serialize(&mut **self)?;
+
+            self.output = self.output.replacen(&format!(":{key}"), &val, 1);
+        }
+
+        Ok(())
     }
 
     fn end(self) -> Result<String> {
         // self.output += "}";
         // Ok(())
-        unimplemented!()
+        // unimplemented!()
+        Ok(String::new())
     }
 }
 
@@ -607,32 +626,28 @@ mod tests {
         let expected = "/users/00000000-0000-0000-0000-000000000000";
         assert_eq!(to_string("/users/:user_id", &test).unwrap(), expected);
     }
-}
 
-/* #[test]
-fn test_enum() {
-    #[derive(Serialize)]
-    enum E {
-        Unit,
-        Newtype(u32),
-        Tuple(u32, u32),
-        Struct { a: u32 },
+    #[test]
+    fn test_nested_field() {
+        #[derive(Serialize)]
+        struct Nested {
+            s: usize,
+        }
+
+        #[derive(Serialize)]
+        struct Test {
+            user_id: Uuid,
+            // #[serde(flatten)]
+            // path에는 1차원만 가능하기 때문에
+            // flatten을 명시하지 않아도 flatten을 명시한 것처럼 작동함
+            nested: Nested,
+        }
+
+        let test = Test {
+            user_id: Uuid::nil(),
+            nested: Nested { s: 125454 },
+        };
+        let expected = "/users/00000000-0000-0000-0000-000000000000/125454";
+        assert_eq!(to_string("/users/:user_id/:s", &test).unwrap(), expected);
     }
-
-    let u = E::Unit;
-    let expected = r#""Unit""#;
-    assert_eq!(to_string(&u).unwrap(), expected);
-
-    let n = E::Newtype(1);
-    let expected = r#"{"Newtype":1}"#;
-    assert_eq!(to_string(&n).unwrap(), expected);
-
-    let t = E::Tuple(1, 2);
-    let expected = r#"{"Tuple":[1,2]}"#;
-    assert_eq!(to_string(&t).unwrap(), expected);
-
-    let s = E::Struct { a: 1 };
-    let expected = r#"{"Struct":{"a":1}}"#;
-    assert_eq!(to_string(&s).unwrap(), expected);
 }
- */
