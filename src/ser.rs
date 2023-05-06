@@ -116,7 +116,8 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<String> {
         // self.output += v;
-        Ok(v.replace(' ', "-"))
+        // Ok(v.replace(' ', "-"))
+        Ok(v.to_string())
     }
 
     // Serialize a byte array as an array of bytes. Could also use a base64
@@ -538,7 +539,7 @@ mod tests {
         let test = Test {
             str: "test whitespace".to_string(),
         };
-        let expected = "/test-whitespace/hello";
+        let expected = "/test whitespace/hello";
         assert_eq!(to_string("/:str/hello", &test).unwrap(), expected);
     }
 
@@ -564,7 +565,7 @@ mod tests {
         let test = Test {
             tuple: (35523, "test whitespace".to_string()),
         };
-        let expected = "/35523-test-whitespace";
+        let expected = "/35523-test whitespace";
         assert_eq!(to_string("/:tuple", &test).unwrap(), expected);
     }
 
