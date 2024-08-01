@@ -544,6 +544,22 @@ mod tests {
     }
 
     #[test]
+    fn test_hypen() {
+        #[derive(Serialize)]
+        struct Test {
+            str: String,
+            x: String,
+        }
+
+        let test = Test {
+            str: "test whitespace".to_string(),
+            x: "world".to_string(),
+        };
+        let expected = "/test whitespace-world/hello";
+        assert_eq!(to_string("/:str-:x/hello", &test).unwrap(), expected);
+    }
+
+    #[test]
     fn test_int() {
         #[derive(Serialize)]
         struct Test {
